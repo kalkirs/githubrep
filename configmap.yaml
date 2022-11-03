@@ -1,0 +1,91 @@
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: java-config
+data:
+  game.properties: |
+    enemy.types=aliens,monsters
+    player.maximum-lives=5    
+  user-interface.properties: |
+    color.good=purple
+    color.bad=yellow
+    allow.textmode=true    
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: java-deployment
+  labels:
+    app: javaapp
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: javaapp
+  template:
+    metadata:
+      labels:
+        app: javaapp
+    spec:
+      initContainers:
+      - name: init-myservice
+        image: gcr.io/murthylab/busybox:latest
+        command: ['sh', '-c', "cp /tmp/config-vol/* /var/shared-volume/"]
+        volumeMounts:
+          - mountPath: /var/shared-volume
+            name: shared-volume
+          - mountPath: /tmp/config-vol
+            name: config-vol
+      containers:      
+      - name: container1
+        image: gcr.io/murthylab/java:v1
+        volumeMounts:
+        - mountPath: /mnt
+          name: shared-volume
+        ports:
+        - containerPort: 8080
+        readinessProbe:
+          httpGet:
+            path: /hello
+            port: 8080
+          initialDelaySeconds: 50
+          periodSeconds: 5
+        livenessProbe:
+          httpGet:
+            path: /hello
+            port: 8080
+          initialDelaySeconds: 60
+          periodSeconds: 5
+        resources:
+          requests:
+            memory: "80Mi"
+            cpu: "100m"
+          limits:
+            memory: "128Mi"
+            cpu: "200m"
+
+      volumes:
+      - name: shared-volume
+        emptyDir: {}
+      - name: config-vol
+        configMap:
+          name: java-config
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: my-service
+spec:
+  selector:
+    app: javaapp
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8080
+  type: LoadBalancer
+  
+---
+
