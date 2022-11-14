@@ -11,6 +11,6 @@ public class HelloWorldController {
 @RequestMapping("/health")
 @ResponseBody
 public String sayHello() {
-return "Welcome to MI Institute!!!";
+return "Welcome to kalki !!!";
 }
 }
